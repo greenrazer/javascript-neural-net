@@ -32,15 +32,22 @@ function createNeuralNet(){
     draw2DArray(TRAINING_IN);
 }
 
-function runNeuralNet(){
+function runNeuralNet(printArray){
+	printArray = printArray || false;
+
 	//forward propagate the network
 	let calcHistory = forwardProp(weightMatrixes);
-	
-    //draw yHat to screen
-    draw2DArray(calcHistory.last());
+    
+    let cost = computeError(TRAINING_OUT, calcHistory.last());
     
     //print the cost
-    console.log(computeError(TRAINING_IN, calcHistory.last()));
+    console.log(cost);
+    
+    //draw yHat to screen
+    if(printArray){
+		draw2DArray(calcHistory.last());
+		console.log(unroll(weightMatrixes));
+	}
     
     //use back propagation to find the weight change
     weightChange = backProp(calcHistory, weightMatrixes);
@@ -66,6 +73,18 @@ function fillWeightMatrixes(arr){
 		}
 		//draw2DArray(arr[i]);
 	}
+	return arr;
+}
+
+function matrixAddConstant(arr, num){
+	let height = arr[i].length;
+	let width = arr[i][0].length;
+	for(let i = 0; i<height; i++){
+		for(let j = 0; j<width; j++){
+			arr[i][j]=arr[i][j]+num;
+		}
+	}
+	//draw2DArray(arr[i]);
 	return arr;
 }
 
@@ -151,6 +170,42 @@ function backProp(history, weights){
 		count++;
 	}
 	return dJdW;
+}
+
+function computeNumericalGradient(weights, history){
+	let approxdJdW = [];
+	let tempInPlus = TRAINING_IN;
+	let tempInMinus = TRAINING_IN;
+	let numInHeight = TRAINING_IN.length;
+	let numInWidth = TRAINING_IN[0].length;
+	let epsilon = 0.00001;
+	let tempHigh;
+	let tempLow;
+	for(let i = 0; i<numInHeight;i++){
+		tempInPlus = TRAINING_IN;
+		tempInMinus = TRAINING_IN;
+		for(let j = 0; j<numInWidth; j++){
+			tempInPlus[i][j]+=epsilon
+			tempInMinus[i][j]+=epsilon
+			tempHigh = forwardProp(tempInPlus);
+			tempLow = forwardProp(tempInMinus);
+			matrixSubtract(tempHigh.last(),tempLow.last());
+		}
+	}
+	
+}
+
+function unroll(arr) {
+	finalArr = [];
+	for(let i = 0; i<arr.length; i++){
+		for(let j = 0; j<arr[i].length; j++){
+			for(let q = 0; q<arr[i][j].length; q++){
+				finalArr.push(arr[i][j][q]);
+			}
+		}
+	}
+	return finalArr
+
 }
 
 /*

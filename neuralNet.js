@@ -6,7 +6,13 @@ $(document).ready(function() {
 	
 	createNeuralNet(2, 3, 2);
 	
+	var keepGoing = false;
+	var doit;
+	
 	$("#continueNet").click(function() {
-		runNeuralNet();
+		for(let i = 0; i<499; i++){
+			runNeuralNet();
+		}
+		runNeuralNet(true);
 	});
 });

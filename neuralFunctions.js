@@ -1,11 +1,10 @@
-var LAYERS = [2, 3, 1];
-const TRAINING_IN = [[0,0],[0,1],[1,0],[1,1]];
-const TRAINING_OUT = [[0,1],[1,0],[1,1],[0,0]];
+//default Matrix
+var LAYERS = [2, 3, 2];
+var TRAINING_IN = [[0,0],[0,1],[1,0],[1,1]];
+var TRAINING_OUT = [[0,1],[1,0],[1,1],[0,0]];
 
 var matrixId = 0;
-
 var eConstant = 2.7182818284;
-
 var weightMatrixes;
 
 /*
@@ -21,7 +20,8 @@ function createNeuralNet(){
     	    LAYERS.push(arguments[i]); 
     	}
     }
-    
+    TRAINING_IN = scaleValues(TRAINING_IN);
+    TRAINING_OUT = scaleValues(TRAINING_OUT);
     //create the weight matrixes
     weightMatrixes = [];
     for(let i = 0; i<LAYERS.length-1; i++){
@@ -34,10 +34,9 @@ function createNeuralNet(){
 
 function runNeuralNet(printArray){
 	printArray = printArray || false;
-
 	//forward propagate the network
 	let calcHistory = forwardProp(weightMatrixes);
-    
+
     let cost = computeError(TRAINING_OUT, calcHistory.last());
     
     //print the cost
@@ -46,7 +45,6 @@ function runNeuralNet(printArray){
     //draw yHat to screen
     if(printArray){
 		draw2DArray(calcHistory.last());
-		console.log(unroll(weightMatrixes));
 	}
     
     //use back propagation to find the weight change
@@ -76,6 +74,12 @@ function fillWeightMatrixes(arr){
 	return arr;
 }
 
+/*
+* add a constant to each element of a matrix
+* @param (array) arr - array to add numbers to
+* @param (float) num - number to add
+* @return (array) arr - the added array
+*/
 function matrixAddConstant(arr, num){
 	let height = arr[i].length;
 	let width = arr[i][0].length;
@@ -137,7 +141,7 @@ function computeError(arr1, arr2){
 /*
 * forward propagates the neural network to get yHat
 * @param (array) arr - weights array;
-* @return (array) history - all the matrixes that led up to getting yHat
+* @return (array) history - all the matrixes that led up to getting and yHat
 */
 function forwardProp(arr){
 	let history = [];
@@ -150,6 +154,18 @@ function forwardProp(arr){
 	return history;
 }
 
+function makeCarbonCopy(arr){
+	let height = arr.length;
+	let width = arr[0].length;
+	let copy = createArray(height,width);
+	for(let i = 0; i <height;i++){
+		for(let j = 0; j<width;j++){
+			copy[i][j] = arr[i][j];
+		}
+	}
+	return copy;
+}
+
 /*
 * back propagates the neural network to get the change in weights
 * @param (array) history - all the matrixes that led up to getting yHat
@@ -159,8 +175,7 @@ function forwardProp(arr){
 function backProp(history, weights){
 	history.unshift(TRAINING_IN);
 	let dJdW = [];
-	
-	let backPropError = matrixMultiplyElements(matrixMultiplyConstant(matrixSubtract(TRAINING_OUT,history.pop()),-1),dxSigmoid(history.pop()));
+	let backPropError = matrixMultiplyElements(matrixMultiplyConstant(matrixSubtract(makeCarbonCopy(TRAINING_OUT),history.pop()),-1),dxSigmoid(history.pop()));
 	dJdW.push(matrixMultiply(transposeMatrix(history.pop()),backPropError));
 	
 	let count = 0;
@@ -288,7 +303,7 @@ function matrixMultiplyElements(arr1, arr2){
 }
 
 /*
-* multiplies matrix by a constant
+* multiplies each elelment in a matrix by a constant
 * @param (array) arr - matrix to be multiplied
 * @param (float) num - number to multiply each element in the matrix by
 * @return (array) arr - product matrix
@@ -303,6 +318,46 @@ function matrixMultiplyConstant(arr, num){
 		}
 	}
 	return arr;
+}
+
+/*
+* scales All elements in a matrix by the highest number in the matrix, or a value if defined 
+* @param (array) arr - matrix to be scaled
+* @param (float) val - number to scale matrix by
+* @return (array) arr - product matrix
+*/
+function scaleValues(arr, val){
+	let tempArr = arr;
+	let height = arr.length;
+	let width = arr[0].length;
+
+	if(val){
+		tempArr = matrixMultiplyConstant(tempArr, (1/val));
+	}
+	else{
+		tempArr = matrixMultiplyConstant(tempArr, (1/findMax(tempArr)));
+	}
+
+	return tempArr;
+}
+
+/*
+* finds the maximum element in a matrix
+* @param (array) arr - matrix to find max in
+* @return (Integer) currMax - maximum Element
+*/
+function findMax(arr){
+	let height = arr.length;
+	let width = arr[0].length;
+	let currMax = arr[0][0];
+	for(let i = 0; i<height;i++){
+		for(let j = 0; j<width; j++){
+			if(arr[i][j] > currMax){
+				currMax = arr[i][j];
+			}
+		}
+	}
+	return currMax;
 }
 
 /*

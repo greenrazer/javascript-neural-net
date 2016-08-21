@@ -7,6 +7,18 @@ var matrixId = 0;
 var eConstant = 2.7182818284;
 var weightMatrixes;
 
+
+/* sets the training data for the neural net
+* @param (array) train_in - the training data for the input
+* @param (array) train_out - the training data for the output
+*/
+function setTrainingData(train_in, train_out){
+	TRAINING_IN = scaleValues(train_in);
+	TRAINING_OUT = scaleValues(train_out)
+
+}
+
+
 /*
 * number of integers to describe neural net
 * @param (integer(s)) **args - any number of integers to describe neural net(e.g. 2,3,1)
@@ -20,8 +32,11 @@ function createNeuralNet(){
     	    LAYERS.push(arguments[i]); 
     	}
     }
-    TRAINING_IN = scaleValues(TRAINING_IN);
-    TRAINING_OUT = scaleValues(TRAINING_OUT);
+    if(LAYERS[0] !== TRAINING_IN[0].length)
+    	console.log("your input layer doesnt match the amount of inputs on your training input array");
+    if(LAYERS.last() !== TRAINING_OUT[0].length)
+    	console.log("your output layer doesnt match the amount of inputs on your training output array");
+
     //create the weight matrixes
     weightMatrixes = [];
     for(let i = 0; i<LAYERS.length-1; i++){
@@ -40,11 +55,12 @@ function runNeuralNet(printArray){
     let cost = computeError(TRAINING_OUT, calcHistory.last());
     
     //print the cost
-    console.log(cost);
+    //console.log(cost);
     
     //draw yHat to screen
     if(printArray){
-		draw2DArray(calcHistory.last());
+    	draw2DArray(calcHistory.last());
+		draw2DArray(calcHistory.last(),true);
 	}
     
     //use back propagation to find the weight change
@@ -406,19 +422,40 @@ function transposeMatrix(arr){
 /*
 * draws a two dimentional array on the screen
 * @param (array) arr - 2 dimentional array to draw on screen
+* @param (boolean) round - whether or not to round the array values to nearest integer
 */
-function draw2DArray(arr){
+function draw2DArray(arr, round){
 	let height = arr.length;
 	let width = arr[0].length;
+	let tempArr = (round)?roundMatrix(arr):arr;
 	
 	//console.log(arr);
 	
 	$("body").append("<div id=\"matrix"+ matrixId+ "\" class=\"matrix\"></div>");
 	$("#matrix"+matrixId).append("<ul style=\"list-style-type: none;\"></ul>");
 	for(let i = 0; i < height; i++){
-		$("#matrix"+matrixId+" ul").append("<li>|"+arr[i]+"|</li>");
+		$("#matrix"+matrixId+" ul").append("<li>|"+tempArr[i]+"|</li>");
 	}
 	matrixId++;
+}
+
+/*
+* rounds every element of a matrix to the nearest Integer
+* @param (array) arr - matrix to round each element
+* @return (array) roundedArr - matrix that has been rounded 
+*/
+function roundMatrix(arr){
+	let height = arr.length;
+	let width = arr[0].length;
+	roundedArr = makeCarbonCopy(arr);
+
+	for(let i = 0; i <height; i++){
+		for(let j = 0; j <width; j++){
+			roundedArr[i][j] = Math.round(roundedArr[i][j]); 
+		}
+	}
+	return roundedArr
+
 }
 
 /*

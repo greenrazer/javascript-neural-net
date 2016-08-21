@@ -52,7 +52,7 @@ function runNeuralNet(printArray){
 	//forward propagate the network
 	let calcHistory = forwardProp(weightMatrixes);
 
-    let cost = computeError(TRAINING_OUT, calcHistory.last());
+    let cost = computeCost(TRAINING_OUT, calcHistory.last());
     
     //print the cost
     //console.log(cost);
@@ -62,10 +62,14 @@ function runNeuralNet(printArray){
     	draw2DArray(calcHistory.last());
 		draw2DArray(calcHistory.last(),true);
 	}
-    
+
     //use back propagation to find the weight change
-    weightChange = backProp(calcHistory, weightMatrixes);
-    
+    let approxWeightChange = computeNumericalGradient(weightMatrixes);
+    let weightChange = backProp(calcHistory, weightMatrixes);
+    let unrolledWeightChange = unroll($.extend(true, [], weightChange).reverse());
+    console.log(unrolledWeightChange, approxWeightChange);
+    console.log(vectorSubtract(unrolledWeightChange, approxWeightChange));
+
     //change the weights
     weightMatrixes = changeWeights(weightMatrixes, weightChange, 3);
 }
@@ -128,7 +132,7 @@ function changeWeights(weights, dxWeights, scalar){
 * @param (array) arr2 - second array to be compared
 * @return (float) error - the error between the first and second array
 */
-function computeError(arr1, arr2){
+function computeCost(arr1, arr2){
 	let height1 = arr1.length;
 	let width1 = arr1[0].length;
 	let height2 = arr2.length;
@@ -141,7 +145,6 @@ function computeError(arr1, arr2){
 		return null;
 	}
 
-	let errorArr = [];
 	let sum = 0;
 	let error = 0;
 	for(let i = 0; i<height1;i++){
@@ -154,32 +157,47 @@ function computeError(arr1, arr2){
 	return error;
 }
 
+function computeCostTEST(arr1, arr2){
+	let height1 = arr1.length;
+	let width1 = arr1[0].length;
+	let height2 = arr2.length;
+	let width2 = arr2[0].length;	
+// 	draw2DArray(arr1);
+// 	draw2DArray(arr2);
+	
+	if(width1 !== width2 || height1 !== height2){ //make sure you can actually multiply the matrices correctly
+		console.log("matrix sizes are not compatible for subtraction");
+		return null;
+	}
+
+	let sum = 0;
+	let error = 0;
+	let errorArr = matrixSubtract(arr1, arr2);
+	for(let i = 0; i<height1;i++){
+		for(let j = 0; j<width1; j++){
+			sum += Math.pow(errorArr[i][j],2);
+		}
+	}
+	sum = sum/2;
+	return sum;
+}
+
 /*
 * forward propagates the neural network to get yHat
 * @param (array) arr - weights array;
 * @return (array) history - all the matrixes that led up to getting and yHat
 */
-function forwardProp(arr){
+function forwardProp(weights, in_arr){
+	let startMatrix = in_arr || TRAINING_IN
+	let tempMatrix;
 	let history = [];
-	history.push(tempMatrix = matrixMultiply(TRAINING_IN,arr[0]));
+	history.push(tempMatrix = matrixMultiply(startMatrix,weights[0]));
 	history.push(tempMatrix = sigmoid(tempMatrix));
-	for(let i = 1;i<arr.length;i++){
-		history.push(tempMatrix=matrixMultiply(tempMatrix,arr[i]));
+	for(let i = 1;i<weights.length;i++){
+		history.push(tempMatrix=matrixMultiply(tempMatrix,weights[i]));
 		history.push(tempMatrix=sigmoid(tempMatrix));
 	}
 	return history;
-}
-
-function makeCarbonCopy(arr){
-	let height = arr.length;
-	let width = arr[0].length;
-	let copy = createArray(height,width);
-	for(let i = 0; i <height;i++){
-		for(let j = 0; j<width;j++){
-			copy[i][j] = arr[i][j];
-		}
-	}
-	return copy;
 }
 
 /*
@@ -191,7 +209,7 @@ function makeCarbonCopy(arr){
 function backProp(history, weights){
 	history.unshift(TRAINING_IN);
 	let dJdW = [];
-	let backPropError = matrixMultiplyElements(matrixMultiplyConstant(matrixSubtract(makeCarbonCopy(TRAINING_OUT),history.pop()),-1),dxSigmoid(history.pop()));
+	let backPropError = matrixMultiplyElements(matrixMultiplyConstant(matrixSubtract($.extend(true, [], TRAINING_OUT),history.pop()),-1),dxSigmoid(history.pop()));
 	dJdW.push(matrixMultiply(transposeMatrix(history.pop()),backPropError));
 	
 	let count = 0;
@@ -203,31 +221,38 @@ function backProp(history, weights){
 	return dJdW;
 }
 
-function computeNumericalGradient(weights, history){
+function computeNumericalGradient(weights){
+	let tempWeightsPlus;
+	let tempWeightsMinus;
+	// console.log(weights.length, weights[0].length, weights[0][0].length)
+	// console.log(tempWeightsPlus.length, tempWeightsPlus[0].length, tempWeightsPlus[0][0].length)
+	// console.log(tempWeightsMinus.length, tempWeightsMinus[0].length, tempWeightsMinus[0][0].length)
+	// console.log(weights, tempWeightsPlus, tempWeightsMinus)
+	let tempLossPlus;
+	let tempLossMinus;
 	let approxdJdW = [];
-	let tempInPlus = TRAINING_IN;
-	let tempInMinus = TRAINING_IN;
-	let numInHeight = TRAINING_IN.length;
-	let numInWidth = TRAINING_IN[0].length;
-	let epsilon = 0.00001;
-	let tempHigh;
-	let tempLow;
-	for(let i = 0; i<numInHeight;i++){
-		tempInPlus = TRAINING_IN;
-		tempInMinus = TRAINING_IN;
-		for(let j = 0; j<numInWidth; j++){
-			tempInPlus[i][j]+=epsilon
-			tempInMinus[i][j]+=epsilon
-			tempHigh = forwardProp(tempInPlus);
-			tempLow = forwardProp(tempInMinus);
-			matrixSubtract(tempHigh.last(),tempLow.last());
+	let epsilon = 0.0001;
+	for(let i = 0; i<weights.length; i++){
+		for(let j = 0; j<weights[i].length; j++){
+			tempWeightsPlus = $.extend(true, [], weights);
+			tempWeightsMinus = $.extend(true, [], weights);
+			for(let q = 0; q<weights[i][j].length; q++){
+				tempWeightsPlus[i][j][q] += epsilon;
+				tempWeightsMinus[i][j][q] -= epsilon;
+
+				tempLossPlus = computeCostTEST(TRAINING_OUT, forwardProp(tempWeightsPlus,TRAINING_IN).last());
+				tempLossMinus = computeCostTEST(TRAINING_OUT, forwardProp(tempWeightsMinus,TRAINING_IN).last());
+				approxdJdW.push((tempLossPlus-tempLossMinus)/(2*epsilon));
+			}
 		}
 	}
-	
+	return approxdJdW;
+
+
 }
 
 function unroll(arr) {
-	finalArr = [];
+	let finalArr = [];
 	for(let i = 0; i<arr.length; i++){
 		for(let j = 0; j<arr[i].length; j++){
 			for(let q = 0; q<arr[i][j].length; q++){
@@ -237,6 +262,16 @@ function unroll(arr) {
 	}
 	return finalArr
 
+}
+
+function copy(o) {
+   var output, v, key;
+   output = Array.isArray(o) ? [] : {};
+   for (key in o) {
+       v = o[key];
+       output[key] = (typeof v === "object") ? copy(v) : v;
+   }
+   return output;
 }
 
 /*
@@ -387,6 +422,7 @@ function matrixSubtract(arr1, arr2){
 	let width1 = arr1[0].length;
 	let height2 = arr2.length;
 	let width2 = arr2[0].length;
+	let finalArr = createArray(height1, width1);
 	
 	if(width1 !== width2 || height1 !== height2){ //make sure you can actually multiply the matrices correctly
 		console.log("matrix sizes are not compatible for subtraction");
@@ -395,10 +431,26 @@ function matrixSubtract(arr1, arr2){
 
 	for(let i = 0; i<height1;i++){
 		for(let j = 0; j<width1; j++){
-			arr1[i][j] = arr1[i][j]-arr2[i][j];
+			finalArr[i][j] = arr1[i][j]-arr2[i][j];
 		}
 	}
-	return arr1;
+	return finalArr;
+}
+
+function vectorSubtract(arr1, arr2){
+	let length1 = arr1.length;
+	let length2 = arr2.length;
+	let finalVect = createArray(length1);
+	
+	if(length1 !== length2){ //make sure you can actually multiply the matrices correctly
+		console.log("matrix sizes are not compatible for subtraction");
+		return null;
+	}
+
+	for(let i = 0; i<length1;i++){
+		finalVect[i] = arr1[i]-arr2[i];
+	}
+	return finalVect;
 }
 
 /*
@@ -447,7 +499,7 @@ function draw2DArray(arr, round){
 function roundMatrix(arr){
 	let height = arr.length;
 	let width = arr[0].length;
-	roundedArr = makeCarbonCopy(arr);
+	roundedArr = $.extend(true, [], arr);
 
 	for(let i = 0; i <height; i++){
 		for(let j = 0; j <width; j++){

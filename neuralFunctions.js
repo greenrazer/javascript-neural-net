@@ -14,7 +14,7 @@ var weightMatrixes;
 */
 function setTrainingData(train_in, train_out){
 	TRAINING_IN = scaleValues(train_in);
-	TRAINING_OUT = scaleValues(train_out)
+	TRAINING_OUT = scaleValues(train_out);
 
 }
 
@@ -59,16 +59,16 @@ function runNeuralNet(printArray){
     
     //draw yHat to screen
     if(printArray){
-    	draw2DArray(calcHistory.last());
+    	//draw2DArray(calcHistory.last());
 		draw2DArray(calcHistory.last(),true);
 	}
 
     //use back propagation to find the weight change
-    let approxWeightChange = computeNumericalGradient(weightMatrixes);
+    // let approxWeightChange = computeNumericalGradient(weightMatrixes);
     let weightChange = backProp(calcHistory, weightMatrixes);
-    let unrolledWeightChange = unroll($.extend(true, [], weightChange).reverse());
-    console.log(unrolledWeightChange, approxWeightChange);
-    console.log(vectorSubtract(unrolledWeightChange, approxWeightChange));
+    // let unrolledWeightChange = unroll($.extend(true, [], weightChange).reverse());
+    // console.log(unrolledWeightChange, approxWeightChange);
+    // console.log(vectorSubtract(unrolledWeightChange, approxWeightChange));
 
     //change the weights
     weightMatrixes = changeWeights(weightMatrixes, weightChange, 3);
